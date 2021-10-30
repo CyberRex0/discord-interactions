@@ -229,7 +229,7 @@ def create_option(
     description: str,
     option_type: typing.Union[int, type],
     required: bool,
-    autocomplete: bool,
+    autocomplete: bool = False,
     choices: list = None,
 ) -> dict:
     """
