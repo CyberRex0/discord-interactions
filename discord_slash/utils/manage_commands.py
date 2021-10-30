@@ -6,7 +6,7 @@ from typing import Union
 
 import aiohttp
 
-from ..error import IncorrectType, RequestFailure
+from ..error import IncorrectCommandData, IncorrectType, RequestFailure
 from ..model import SlashCommandOptionType, SlashCommandPermissionType
 
 
@@ -131,7 +131,7 @@ async def get_all_guild_commands_permissions(bot_id, bot_token, guild_id):
     :param bot_id: User ID of the bot.
     :param bot_token: Token of the bot.
     :param guild_id: ID of the guild to get permissions.
-    :return: JSON Response of the request. A list of <https://discord.com/developers/docs/interactions/application-commands#get-application-command-permissions>.
+    :return: JSON Response of the request. A list of <https://discord.com/developers/docs/interactions/slash-commands#get-application-command-permissions>.
     :raises: :class:`.error.RequestFailure` - Requesting to Discord API has failed.
     """
     url = f"https://discord.com/api/v8/applications/{bot_id}/guilds/{guild_id}/commands/permissions"
@@ -154,7 +154,7 @@ async def get_guild_command_permissions(bot_id, bot_token, guild_id, command_id)
     :param bot_token: Token of the bot.
     :param guild_id: ID of the guild to update permissions on.
     :param command_id: ID for the command to update permissions on.
-    :return: JSON Response of the request. A list of <https://discord.com/developers/docs/interactions/application-commands#edit-application-command-permissions>
+    :return: JSON Response of the request. A list of <https://discord.com/developers/docs/interactions/slash-commands#edit-application-command-permissions>
     :raises: :class:`.error.RequestFailure` - Requesting to Discord API has failed.
     """
     url = f"https://discord.com/api/v8/applications/{bot_id}/guilds/{guild_id}/commands/{command_id}/permissions"
@@ -178,7 +178,7 @@ async def update_single_command_permissions(bot_id, bot_token, guild_id, command
     :param guild_id: ID of the guild to update permissions on.
     :param command_id: ID for the command to update permissions on.
     :param permissions: List of permissions for the command.
-    :return: JSON Response of the request. A list of <https://discord.com/developers/docs/interactions/application-commands#edit-application-command-permissions>
+    :return: JSON Response of the request. A list of <https://discord.com/developers/docs/interactions/slash-commands#edit-application-command-permissions>
     :raises: :class:`.error.RequestFailure` - Requesting to Discord API has failed.
     """
     url = f"https://discord.com/api/v8/applications/{bot_id}/guilds/{guild_id}/commands/{command_id}/permissions"
@@ -205,7 +205,7 @@ async def update_guild_commands_permissions(bot_id, bot_token, guild_id, cmd_per
     :param bot_token: Token of the bot.
     :param guild_id: ID of the guild to update permissions.
     :param cmd_permissions: List of dict with permissions for each commands.
-    :return: JSON Response of the request. A list of <https://discord.com/developers/docs/interactions/application-commands#batch-edit-application-command-permissions>.
+    :return: JSON Response of the request. A list of <https://discord.com/developers/docs/interactions/slash-commands#batch-edit-application-command-permissions>.
     :raises: :class:`.error.RequestFailure` - Requesting to Discord API has failed.
     """
     url = f"https://discord.com/api/v8/applications/{bot_id}/guilds/{guild_id}/commands/permissions"
@@ -229,6 +229,7 @@ def create_option(
     description: str,
     option_type: typing.Union[int, type],
     required: bool,
+    autocomplete: bool,
     choices: list = None,
 ) -> dict:
     """
@@ -246,7 +247,7 @@ def create_option(
         You must set the the relevant argument's function to a default argument, eg ``argname = None``.
 
     .. note::
-        ``choices`` must either be a list of `option type dicts <https://discord.com/developers/docs/interactions/application-commands#application-command-object-application-command-option-choice-structure>`_
+        ``choices`` must either be a list of `option type dicts <https://discord.com/developers/docs/interactions/slash-commands#applicationcommandoptionchoice>`_
         or a list of single string values.
     """
     if not isinstance(option_type, int) or isinstance(
@@ -259,6 +260,8 @@ def create_option(
                 f"The type {original_type} is not recognized as a type that Discord accepts for slash commands."
             )
     choices = choices or []
+    if choices and autocomplete:
+        raise IncorrectCommandData("Cannot be set choices when autocomplete is enabled")
     choices = [
         choice if isinstance(choice, dict) else {"name": choice, "value": choice}
         for choice in choices
@@ -268,6 +271,7 @@ def create_option(
         "description": description,
         "type": option_type,
         "required": required,
+        "autocomplete": autocomplete,
         "choices": choices,
     }
 
@@ -313,7 +317,8 @@ def generate_options(
             SlashCommandOptionType.from_type(param.annotation) or SlashCommandOptionType.STRING
         )
         name = param.name if not connector else connector[param.name]
-        options.append(create_option(name, description or "No Description.", option_type, required))
+        autocomplete = False
+        options.append(create_option(name, description or "No Description.", option_type, required, autocomplete))
 
     return options
 
