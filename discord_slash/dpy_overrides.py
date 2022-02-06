@@ -5,6 +5,13 @@ from discord import AllowedMentions, File, InvalidArgument, abc, http, utils
 from discord.ext import commands
 from discord.http import Route
 
+DPY_V2_INSTALLED = (discord.version_info.major>=2)
+
+def to_json_compat(obj):
+    if DPY_V2_INSTALLED:
+        return discord.utils._to_json(obj)
+    else:
+        return discord.utils.to_json(obj)
 
 class ComponentMessage(discord.Message):
     __slots__ = tuple(list(discord.Message.__slots__) + ["components"])
@@ -67,7 +74,7 @@ def send_files(
     if message_reference:
         payload["message_reference"] = message_reference
 
-    form.append({"name": "payload_json", "value": utils.to_json(payload)})
+    form.append({"name": "payload_json", "value": to_json_compat(payload)})
     if len(files) == 1:
         file = files[0]
         form.append(
